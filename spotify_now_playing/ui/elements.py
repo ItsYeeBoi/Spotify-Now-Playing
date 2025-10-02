@@ -1,44 +1,31 @@
-from io import BytesIO
+"""Utilities for constructing the CustomTkinter interface."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
 
 import customtkinter as ctk
-import requests
-from PIL import Image, ImageDraw, ImageOps
 
-from scrolling import SmoothScrollingLabel
+from .widgets import AlbumLabel, SmoothScrollingLabel
 
-
-class AlbumLabel(ctk.CTkLabel):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.image_url = None
-
-    def set_image(self, url):
-        if self.image_url == url:
-            return
-
-        self.image_url = url
-        response = requests.get(url)
-        response.raise_for_status()
-        img_data = response.content
-        img = Image.open(BytesIO(img_data))
-
-        img = img.resize((100, 100), Image.LANCZOS)
-        img = self.rounded_image(img, radius=15)
-
-        ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=(100, 100))
-        self.configure(image=ctk_img, text="")
-        self.image = ctk_img
-
-    def rounded_image(self, image, radius):
-        mask = Image.new("L", image.size, 0)
-        draw = ImageDraw.Draw(mask)
-        draw.rounded_rectangle((0, 0) + image.size, radius=radius, fill=255)
-        rounded_image = ImageOps.fit(image, mask.size, centering=(0.5, 0.5))
-        rounded_image.putalpha(mask)
-        return rounded_image
+__all__ = ["SongDisplayWidgets", "build_ui"]
 
 
-def create_gui_elements(root):
+@dataclass(frozen=True)
+class SongDisplayWidgets:
+    """Convenience container for the widgets used to render track details."""
+
+    song_label: SmoothScrollingLabel
+    artist_label: SmoothScrollingLabel
+    album_label: AlbumLabel
+    progress_bar: ctk.CTkProgressBar
+    current_time_label: ctk.CTkLabel
+    total_time_label: ctk.CTkLabel
+
+
+def build_ui(root: ctk.CTk) -> SongDisplayWidgets:
+    """Create the GUI hierarchy for the application."""
+
     root.geometry("500x200")
 
     main_frame = ctk.CTkFrame(root, corner_radius=10)
@@ -86,11 +73,11 @@ def create_gui_elements(root):
     )
     total_time_label.pack(side="left", padx=(5, 10))
 
-    return (
-        song_label,
-        artist_label,
-        album_label,
-        progress_bar,
-        current_time_label,
-        total_time_label,
+    return SongDisplayWidgets(
+        song_label=song_label,
+        artist_label=artist_label,
+        album_label=album_label,
+        progress_bar=progress_bar,
+        current_time_label=current_time_label,
+        total_time_label=total_time_label,
     )

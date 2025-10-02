@@ -1,31 +1,89 @@
+"""Reusable CustomTkinter widgets used across the application."""
+
+from __future__ import annotations
+
 import tkinter as tk
+from io import BytesIO
+from typing import Iterable, Tuple
 
 import customtkinter as ctk
+import requests
+from PIL import Image, ImageDraw, ImageOps
+
+__all__ = ["AlbumLabel", "SmoothScrollingLabel"]
 
 
-def _resolve_color(color):
-    """Resolve a CustomTkinter color (which may be a tuple) to a tk-compatible value."""
+def _resolve_color(color: object) -> str:
+    """Resolve a CustomTkinter color to a value understood by Tk."""
 
-    if isinstance(color, list) or isinstance(color, tuple):
+    if isinstance(color, (list, tuple)):
         appearance = ctk.get_appearance_mode()
-        return color[1] if appearance == "Dark" else color[0]
-    return color
+        return color[1] if appearance == "Dark" and len(color) > 1 else color[0]
+    return str(color)
+
+
+class AlbumLabel(ctk.CTkLabel):
+    """Label capable of downloading and displaying album artwork."""
+
+    _size: Tuple[int, int] = (100, 100)
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.image_url: str | None = None
+        self._image: ctk.CTkImage | None = None
+
+    def set_image(self, url: str | None) -> None:
+        """Download and display the image located at ``url``."""
+
+        if not url:
+            self.clear()
+            return
+
+        if self.image_url == url:
+            return
+
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        img = Image.open(BytesIO(response.content))
+        img = img.resize(self._size, Image.LANCZOS)
+        img = self._rounded_image(img, radius=15)
+
+        ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=self._size)
+        self.configure(image=ctk_img, text="")
+        self.image_url = url
+        self._image = ctk_img
+
+    def clear(self) -> None:
+        """Remove the currently displayed album artwork."""
+
+        self.configure(image=None, text="")
+        self.image_url = None
+        self._image = None
+
+    @staticmethod
+    def _rounded_image(image: Image.Image, radius: int) -> Image.Image:
+        mask = Image.new("L", image.size, 0)
+        draw = ImageDraw.Draw(mask)
+        draw.rounded_rectangle((0, 0) + image.size, radius=radius, fill=255)
+        rounded_image = ImageOps.fit(image, mask.size, centering=(0.5, 0.5))
+        rounded_image.putalpha(mask)
+        return rounded_image
 
 
 class SmoothScrollingLabel(ctk.CTkFrame):
-    """A label-like widget that provides smooth marquee style scrolling."""
+    """A label-like widget that provides smooth marquee-style scrolling."""
 
     def __init__(
         self,
-        master,
-        width,
-        font,
-        text_color="white",
-        step=1,
-        delay=15,
-        pause=1000,
-        **kwargs,
-    ):
+        master: ctk.CTkBaseClass,
+        width: int,
+        font: ctk.CTkFont | Iterable[str | int] | str,
+        text_color: str = "white",
+        step: int = 1,
+        delay: int = 15,
+        pause: int = 1000,
+        **kwargs: object,
+    ) -> None:
         super().__init__(master, width=width, fg_color="transparent", **kwargs)
 
         if isinstance(font, ctk.CTkFont):
@@ -41,13 +99,14 @@ class SmoothScrollingLabel(ctk.CTkFrame):
             )
         else:
             self._font = ctk.CTkFont(font=font)
+
         self._text_color = text_color
         self._step = step
         self._delay = delay
         self._pause = pause
         self._current_text = ""
-        self._scroll_job = None
-        self._text_items = []
+        self._scroll_job: str | None = None
+        self._text_items: list[int] = []
         self._gap = 40
 
         height = int(self._font.cget("size") * 2)
@@ -56,8 +115,6 @@ class SmoothScrollingLabel(ctk.CTkFrame):
         self.pack_propagate(False)
 
         bg_color = _resolve_color(getattr(master, "cget", lambda _arg: "")("fg_color"))
-        # print(_resolve_color(getattr(master, "cget", lambda _arg: "")("fg_color")))
-
         if not bg_color:
             bg_color = _resolve_color(self.cget("fg_color"))
 
@@ -73,23 +130,22 @@ class SmoothScrollingLabel(ctk.CTkFrame):
 
         self.bind("<Configure>", self._handle_resize)
 
-    def _handle_resize(self, event):
+    def _handle_resize(self, event: tk.Event[tk.Misc]) -> None:
         if event.width == self._canvas.winfo_width():
             return
         self._canvas.configure(width=event.width)
         if self._current_text:
-            # Re-render the text so that scrolling adapts to the new width.
             self.set_text(self._current_text, force=True)
 
-    def _cancel_scroll(self):
+    def _cancel_scroll(self) -> None:
         if self._scroll_job is not None:
             self.after_cancel(self._scroll_job)
             self._scroll_job = None
 
-    def _start_scroll(self):
+    def _start_scroll(self) -> None:
         self._scroll_job = self.after(self._delay, self._animate)
 
-    def set_text(self, text, *, force=False):
+    def set_text(self, text: str | None, *, force: bool = False) -> None:
         """Display new text, enabling smooth scrolling when necessary."""
 
         text = text or ""
@@ -121,7 +177,6 @@ class SmoothScrollingLabel(ctk.CTkFrame):
         if text_width <= canvas_width:
             return
 
-        # Long text requires scrolling, so replace the static item with marquee items.
         self._canvas.delete(static_item)
         padded_text = f"{text}   "
         self._canvas.update_idletasks()
@@ -148,7 +203,7 @@ class SmoothScrollingLabel(ctk.CTkFrame):
         self._text_items = [first, second]
         self._scroll_job = self.after(self._pause, self._animate)
 
-    def _animate(self):
+    def _animate(self) -> None:
         if not self._text_items:
             self._scroll_job = None
             return
@@ -163,13 +218,10 @@ class SmoothScrollingLabel(ctk.CTkFrame):
             if bbox and bbox[2] <= 0:
                 other = self._text_items[(idx + 1) % len(self._text_items)]
                 other_bbox = self._canvas.bbox(other)
-                if other_bbox:
-                    new_x = other_bbox[2] + self._gap
-                else:
-                    new_x = canvas_width
+                new_x = (other_bbox[2] + self._gap) if other_bbox else canvas_width
                 self._canvas.coords(item, new_x, center_y)
 
         self._start_scroll()
 
-    def clear(self):
+    def clear(self) -> None:
         self.set_text("", force=True)
