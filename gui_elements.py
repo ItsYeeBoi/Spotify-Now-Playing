@@ -1,7 +1,10 @@
-import customtkinter as ctk
-from PIL import Image, ImageOps, ImageDraw
 from io import BytesIO
+
+import customtkinter as ctk
 import requests
+from PIL import Image, ImageDraw, ImageOps
+
+from scrolling import SmoothScrollingLabel
 
 
 class AlbumLabel(ctk.CTkLabel):
@@ -23,7 +26,7 @@ class AlbumLabel(ctk.CTkLabel):
         img = self.rounded_image(img, radius=15)
 
         ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=(100, 100))
-        self.configure(image=ctk_img)
+        self.configure(image=ctk_img, text="")
         self.image = ctk_img
 
     def rounded_image(self, image, radius):
@@ -49,25 +52,21 @@ def create_gui_elements(root):
 
     label_width = 300
 
-    song_label = ctk.CTkLabel(
+    song_label = SmoothScrollingLabel(
         details_frame,
-        text="",
+        width=label_width,
         font=("Helvetica", 16),
         text_color="white",
-        width=label_width,
-        anchor="w",
     )
-    song_label.pack(pady=5, padx=10)
+    song_label.pack(pady=5, padx=10, fill="x")
 
-    artist_label = ctk.CTkLabel(
+    artist_label = SmoothScrollingLabel(
         details_frame,
-        text="",
+        width=label_width,
         font=("Helvetica", 12),
         text_color="gray",
-        width=label_width,
-        anchor="w",
     )
-    artist_label.pack(pady=5, padx=10)
+    artist_label.pack(pady=5, padx=10, fill="x")
 
     progress_frame = ctk.CTkFrame(main_frame, corner_radius=15)
     progress_frame.grid(row=1, column=1, padx=10, pady=10, sticky="w")

@@ -1,7 +1,8 @@
-import spotipy
-from spotipy.oauth2 import SpotifyOAuth
 import os
+
+import spotipy
 from dotenv import load_dotenv
+from spotipy.oauth2 import SpotifyOAuth
 
 # Load environment variables
 load_dotenv()
@@ -33,7 +34,16 @@ def get_current_song():
         progress_ms = current_track["progress_ms"]
         duration_ms = current_track["item"]["duration_ms"]
         track_id = current_track["item"]["id"]
+        playback_timestamp = current_track.get("timestamp")
 
-        return song_name, artists, album_art_url, progress_ms, duration_ms, track_id
+        return (
+            song_name,
+            artists,
+            album_art_url,
+            progress_ms,
+            duration_ms,
+            track_id,
+            playback_timestamp,
+        )
     else:
-        return None, None, None, None, None, None
+        return None, None, None, None, None, None, None
