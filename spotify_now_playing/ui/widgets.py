@@ -57,6 +57,8 @@ class AlbumLabel(ctk.CTkLabel):
         """Remove the currently displayed album artwork."""
 
         self.configure(image=None, text="")
+        self._label.configure(image="")
+
         self.image_url = None
         self._image = None
 
