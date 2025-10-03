@@ -6,6 +6,7 @@ import logging
 import threading
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Callable, Optional
 
 import customtkinter as ctk
@@ -49,22 +50,19 @@ class SpotifyNowPlayingApp:
             self.root = root
         self.root.title("Spotify Now Playing")
 
+        self._ensure_fonts_loaded()
         self.widgets: SongDisplayWidgets = build_ui(self.root)
         self._state = PlaybackState()
         self._polling_thread: Optional[threading.Thread] = None
 
-    # ------------------------------------------------------------------
     # Public API
-    # ------------------------------------------------------------------
     def run(self) -> None:
         """Start the polling thread and enter the Tk main loop."""
 
         self._start_polling()
         self.root.mainloop()
 
-    # ------------------------------------------------------------------
     # Internal helpers
-    # ------------------------------------------------------------------
     def _start_polling(self) -> None:
         if self._polling_thread and self._polling_thread.is_alive():
             return
@@ -85,8 +83,8 @@ class SpotifyNowPlayingApp:
     def _safe_fetch_track(self) -> Optional[TrackInfo]:
         try:
             return self._track_supplier()
-        except Exception as exc:  # pragma: no cover - defensive guard
-            logger.exception("Failed to fetch track information: %s", exc)
+        except Exception as exc:
+            logger.exception(f"Failed to fetch track information: {exc}")
             return None
 
     def _apply_track_update(self, track: Optional[TrackInfo]) -> None:
@@ -111,8 +109,8 @@ class SpotifyNowPlayingApp:
         if track.album_art_url:
             try:
                 self.widgets.album_label.set_image(track.album_art_url)
-            except RequestException as exc:  # pragma: no cover - network failure
-                logger.warning("Unable to load album artwork: %s", exc)
+            except RequestException as exc:
+                logger.warning(f"Unable to load album artwork: {exc}")
         else:
             self.widgets.album_label.clear()
 
@@ -137,6 +135,28 @@ class SpotifyNowPlayingApp:
     def _format_time(milliseconds: int) -> str:
         minutes, seconds = divmod(max(milliseconds, 0) // 1000, 60)
         return f"{minutes}:{seconds:02}"
+
+    # Font management
+    _fonts_loaded = False
+
+    def _ensure_fonts_loaded(self) -> None:
+        if SpotifyNowPlayingApp._fonts_loaded:
+            return
+
+        font_path = (
+            Path(__file__).resolve().parent / "ui" / "fonts" / "Poppins-Medium.ttf"
+        )
+        if font_path.exists():
+            try:
+                ctk.FontManager.load_font(str(font_path))
+            except OSError as exc:
+                logger.warning(f"Unable to load custom font '{font_path}': {exc}")
+        else:
+            logger.warning(
+                f"Custom font not found at '{font_path}'; falling back to system fonts."
+            )
+
+        SpotifyNowPlayingApp._fonts_loaded = True
 
 
 def run_app() -> None:

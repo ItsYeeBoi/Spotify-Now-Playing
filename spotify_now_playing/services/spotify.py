@@ -40,7 +40,7 @@ class TrackInfo:
 def _get_env(name: str) -> str:
     try:
         value = os.environ[name]
-    except KeyError as exc:  # pragma: no cover - defensive guard
+    except KeyError as exc:
         raise RuntimeError(
             f"Environment variable {name!r} is required for Spotify authentication"
         ) from exc

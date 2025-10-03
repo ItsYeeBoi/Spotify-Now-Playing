@@ -46,7 +46,7 @@ class AlbumLabel(ctk.CTkLabel):
         response.raise_for_status()
         img = Image.open(BytesIO(response.content))
         img = img.resize(self._size, Image.LANCZOS)
-        img = self._rounded_image(img, radius=15)
+        img = self._rounded_image(img, radius=5)
 
         ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=self._size)
         self.configure(image=ctk_img, text="")
