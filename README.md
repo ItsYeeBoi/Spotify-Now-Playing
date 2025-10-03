@@ -64,4 +64,4 @@ Missing or empty values will raise an informative error during start-up.
 
 ## License
 
-This project is provided as-is without any specific license. Adapt it to suit your needs.
+This project is released under the [MIT License](LICENSE).
